@@ -82,22 +82,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "blm-rpc"
-version = "0.1.0"
-dependencies = [
- "ansi_term",
- "env_logger",
- "ethereum-types",
- "jsonrpc-core",
- "jsonrpc-derive",
- "jsonrpc-http-server",
- "rustc-hex",
- "serde",
- "serde_derive",
- "serde_json",
-]
-
-[[package]]
 name = "block-buffer"
 version = "0.7.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -132,8 +116,6 @@ dependencies = [
  "serde",
  "serde_derive",
  "serde_json",
- "tokio 0.2.22",
- "web3",
 ]
 
 [[package]]
