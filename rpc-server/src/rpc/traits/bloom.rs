@@ -17,7 +17,7 @@ pub trait RpcMethod {
     fn accounts(&self) -> Result<Vec<H160>>;
 
     /// Returns current gas_price.
-    #[rpc(name = "eth_gasPrice")]
+    #[rpc(name = "gasPrice")]
     fn gas_price(&self) -> BoxFuture<U256>;
 
     /// Returns highest block number.

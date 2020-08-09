@@ -20,14 +20,16 @@ use rpc::Metadata;
 use rpc::RpcMethod;
 use rpc::BloomClient;
 use rpc::types::Bytes;
-use jsonrpc_core::types::request::Request::Single;
+use jsonrpc_core::types::request::Request::{Single, Batch};
 use jsonrpc_core::types::request::Call::MethodCall;
 use jsonrpc_core::types::id::Id;
 use jsonrpc_core::types::params::Params;
 use jsonrpc_core::Output::Success;
 use jsonrpc_core::types::response::Response::Single as RepSingle;
+
 #[derive(Default)]
 struct MyMiddleware(AtomicUsize);
+
 impl Middleware<Metadata> for MyMiddleware {
 	type Future = FutureResponse;
 	type CallFuture = middleware::NoopCallFuture;
@@ -40,30 +42,76 @@ impl Middleware<Metadata> for MyMiddleware {
 		println!("\n==== ==== ==== ====\n");
 		println!("Original Request Structure: {:?}", request);
 		let mut req = request;
-		let mut obj = jsonrpc_core::types::request::MethodCall {
+
+		let mut mc_obj = jsonrpc_core::types::request::MethodCall {
 			jsonrpc: None,
 			method: Default::default(),
 			params: Params::None,
 			id: Id::Null,
 		};
 
-		if let Single(MethodCall(mut mc)) = req {
-			println!("Original Method: {:?}", mc.method);
-			if mc.method.starts_with("eth_") {
-				mc.method.replace_range(..4, "");
-				println!("Modified Method: {:?}", mc.method);
-			}
-			obj = mc;
-		}
-		println!("Pre-Processed Request Object: {:?}", obj);
+		let mut mc_obj_vec : Vec<jsonrpc_core::types::request::Call> = Default::default();
+		let mut flag = false;
 
-		Either::A(Box::new(next(Single(MethodCall(obj)), meta).map(move |res| {
-			println!("Response Structure: {:?}", &res);
-			if let Some(RepSingle(Success(res_obj))) = &res {
-				println!("Response Object: {:?}", res_obj);
+		match req {
+			Single(MethodCall(mut mc)) => {
+				println!("Original Method: {:?}", mc.method);
+				if mc.method.starts_with("eth_") {
+					mc.method.replace_range(..4, "");
+					println!("Modified Method: {:?}", mc.method);
+				}
+				mc_obj = mc;
+			},
+			Batch(vec_call) => {
+				for every_call in vec_call {
+					if let MethodCall(mut mc) = every_call {
+						println!("Original Method: {:?}", mc.method);
+						if mc.method.starts_with("eth_") {
+							mc.method.replace_range(..4, "");
+							println!("Modified Method: {:?}", mc.method);
+						}
+						mc_obj_vec.push(MethodCall(mc));
+					}
+				};
+				flag = true;
+			},
+			_ => {
+				println!("Request not supported yet");
 			}
-			res
-		})))
+		}
+
+		println!("Pre-Processed Request Object: {:?}", mc_obj);
+		println!("Pre-Processed Request Object Vec: {:?}", mc_obj_vec);
+
+		if flag {
+			Either::A(
+				Box::new(
+					next(Batch(mc_obj_vec), meta).map(
+						move |res| {
+							println!("Response Structure: {:?}", &res);
+							if let Some(RepSingle(Success(res_obj))) = &res {
+								println!("Response Object: {:?}", res_obj);
+							}
+							res
+						}
+					)
+				)
+			)
+		} else {
+			Either::A(
+				Box::new(
+					next(Single(MethodCall(mc_obj)), meta).map(
+						move |res| {
+							println!("Response Structure: {:?}", &res);
+							if let Some(RepSingle(Success(res_obj))) = &res {
+								println!("Response Object: {:?}", res_obj);
+							}
+							res
+						}
+					)
+				)
+			)
+		}
 	}
 }
 
